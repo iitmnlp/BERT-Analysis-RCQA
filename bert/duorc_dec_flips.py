@@ -33,7 +33,7 @@ import tokenization
 import six
 import tensorflow as tf
 
-from all_eval_functions import *
+from duorc_all_eval_functions import *
 
 flags = tf.flags
 
@@ -169,6 +169,9 @@ flags.DEFINE_float(
 flags.DEFINE_bool("need_ans_position",
     True,"whether we need answer position for flip fraction evaluation")
 
+flags.DEFINE_integer("start_example_index", 3000, "xx")
+flags.DEFINE_integer("end_example_index", 9000, "xx")
+
 # needed to calculate decision flips
 assert FLAGS.predict_batch_size==1
 
@@ -245,7 +248,7 @@ class InputFeatures(object):
 def read_squad_examples(input_file, is_training):
   """Read a SQuAD json file into a list of SquadExample."""
   with tf.gfile.Open(input_file, "r") as reader:
-    input_data = json.load(reader)["data"]
+    input_data = json.load(reader)#["data"]
 
   def is_whitespace(c):
     if c == " " or c == "\t" or c == "\r" or c == "\n" or ord(c) == 0x202F:
@@ -254,8 +257,9 @@ def read_squad_examples(input_file, is_training):
 
   examples = []
   for entry in input_data:
-    for paragraph in entry["paragraphs"]:
-      paragraph_text = paragraph["context"]
+    paragraph=entry
+    if True : # for paragraph in entry["paragraphs"]:
+      paragraph_text = paragraph["plot"]
       doc_tokens = []
       char_to_word_offset = []
       prev_is_whitespace = True
@@ -270,7 +274,7 @@ def read_squad_examples(input_file, is_training):
           prev_is_whitespace = False
         char_to_word_offset.append(len(doc_tokens) - 1)
 
-      for qa in paragraph["qas"]:
+      for qa in paragraph["qa"]:
         qas_id = qa["id"]
         question_text = qa["question"]
         start_position = None
@@ -281,13 +285,14 @@ def read_squad_examples(input_file, is_training):
 
           if FLAGS.version_2_with_negative:
             is_impossible = qa["is_impossible"]
-          if (len(qa["answers"]) != 1) and (not is_impossible):
-            raise ValueError(
-                "For training, each question should have exactly 1 answer.")
+          # if (len(qa["answers"]) != 1) and (not is_impossible):
+          #   raise ValueError(
+          #       "For training, each question should have exactly 1 answer.")
           if not is_impossible:
             answer = qa["answers"][0]
-            orig_answer_text = answer["text"]
-            answer_offset = answer["answer_start"]
+            orig_answer_text = answer#["text"]
+            tf.logging.info("Line 291 : ", orig_answer_text)
+            answer_offset = paragraph_text.find(answer)
             answer_length = len(orig_answer_text)
             start_position = char_to_word_offset[answer_offset]
             end_position = char_to_word_offset[answer_offset + answer_length -
@@ -333,8 +338,8 @@ def convert_examples_to_features(examples, tokenizer, max_seq_length,
   save_tokens_dict={}
 
   for (example_index, example) in enumerate(examples):
-    #if example_index==250 : 
-    #  break
+    if example_index<FLAGS.start_example_index or example_index>=FLAGS.end_example_index : #if example_index<3000 or example_index>=9000 : 
+      continue
     query_tokens = tokenizer.tokenize(example.question_text)
 
     if len(query_tokens) > max_query_length:
@@ -409,7 +414,7 @@ def convert_examples_to_features(examples, tokenizer, max_seq_length,
       tokens.append("[SEP]")
       segment_ids.append(1)
 
-      save_tokens_dict[example.qas_id]=tokens
+      save_tokens_dict[unique_id]=tokens
       input_ids = tokenizer.convert_tokens_to_ids(tokens)
 
       # The mask has 1 for real tokens and 0 for padding tokens. Only real
@@ -626,12 +631,9 @@ def create_model(bert_config, is_training, input_ids, input_mask, segment_ids,
   tf.logging.info("Encoder layers shape=%s",str(all_encoder_layers[cnt].get_shape())) # 27
   
 
-  if FLAGS.span_or_enclayer=='enclayer' and cnt==-1:
-    return (start_logits, end_logits,all_encoder_layers[0],output_weights,output_bias) # coz I appended the input embs at the beginning
   #if FLAGS.span_or_enclayer=="enclayer" : 
   #  emb=tf.reshape(all_encoder_layers[cnt],[batch_size,seq_length,hidden_size])
-  else :   
-    return (start_logits, end_logits,all_encoder_layers[cnt],output_weights,output_bias)
+  return (start_logits, end_logits,all_encoder_layers[cnt],output_weights,output_bias)
 
 ##################################################################################################
 def create_model_intgrad(bert_config, is_training, input_ids, input_mask, segment_ids, emb,
@@ -649,7 +651,6 @@ def create_model_intgrad(bert_config, is_training, input_ids, input_mask, segmen
 
   # scaling embedding
   baseline=tf.zeros_like(emb)
-  #baseline=tf.random_uniform(shape=tf.shape(emb))
   tf.logging.info("emb : %s",str(emb.get_shape()))
   tf.logging.info("baseline : %s",str(baseline.get_shape()))
   scaled_emb=[baseline + (float(i)/20)*(emb-baseline)  for i in range(20)]
@@ -718,9 +719,7 @@ def create_model_intgrad(bert_config, is_training, input_ids, input_mask, segmen
   tf.logging.info("Number of encoder layers=%d",num)
   tf.logging.info("Encoder layers=%s",str(all_encoder_layers))
   tf.logging.info("Encoder layers shape=%s",str(all_encoder_layers[cnt].get_shape())) # 27  
-  if FLAGS.span_or_enclayer=='enclayer' and cnt==-1:
-    grad_emb=all_encoder_layers[0] # coz I appended the input embs at the beginning 
-  elif FLAGS.span_or_enclayer=='enclayer' : 
+  if FLAGS.span_or_enclayer=='enclayer' : 
     grad_emb=all_encoder_layers[cnt]
   tf.logging.info("grad_emb=%s",str(grad_emb.get_shape()))
 
@@ -872,7 +871,6 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
         segment_ids=segment_ids,
         use_one_hot_embeddings=use_one_hot_embeddings)
 
-    #### April 13 2020
     if doing_integrated_gradients : 
       (integrated_gradients,baseline) = create_model_intgrad(
           bert_config=bert_config,
@@ -884,8 +882,6 @@ def model_fn_builder(bert_config, init_checkpoint, learning_rate,
           use_one_hot_embeddings=use_one_hot_embeddings,
           output_weights=output_weights,
           output_bias=output_bias)
-    #integrated_gradients=tf.zeros((1))
-    #baseline=tf.zeros((1))
     if after_integrated_gradients : 
       pass
 
@@ -1055,14 +1051,13 @@ def write_predictions(all_examples, all_features, all_results, n_best_size,
   imp_scores=collections.OrderedDict()
   all_embs=collections.OrderedDict()
   all_seq_lens=collections.OrderedDict()
-  all_start_inds=collections.OrderedDict()
-  all_end_inds=collections.OrderedDict()
 
-  qn_and_doc_words=np.load(FLAGS.output_dir+'/qn_and_doc_tokens.npy',allow_pickle=True).item()
+  qn_and_doc_words=np.load(os.path.join(FLAGS.output_dir,'qn_and_doc_tokens.npy'),allow_pickle=True).item()
 
   for (example_index, example) in enumerate(all_examples):
-    #if example_index==250 : 
-    #  break
+    if example_index<FLAGS.start_example_index or example_index>=FLAGS.end_example_index : #if example_index<3000 or example_index>=9000 : 
+      print('Skipping example_index : ',example_index)
+      continue
     features = example_index_to_features[example_index]
 
 
@@ -1072,6 +1067,10 @@ def write_predictions(all_examples, all_features, all_results, n_best_size,
     min_null_feature_index = 0  # the paragraph slice with min mull score
     null_start_logit = 0  # the start logit at the slice with min null score
     null_end_logit = 0  # the end logit at the slice with min null score
+    null_unique_id=None
+    null_feature=None
+    null_tok_to_orig_map=None
+
     for (feature_index, feature) in enumerate(features):
       result = unique_id_to_result[feature.unique_id]
       start_indexes = _get_best_indexes(result.start_logits, n_best_size)
@@ -1087,6 +1086,10 @@ def write_predictions(all_examples, all_features, all_results, n_best_size,
           min_null_feature_index = feature_index
           null_start_logit = result.start_logits[0]
           null_end_logit = result.end_logits[0]
+          null_unique_id=feature.unique_id
+          null_tok_to_orig_map=feature.tok_to_orig_map
+          null_feature=feature
+
       for start_index in start_indexes:
         for end_index in end_indexes:
           # We could hypothetically create invalid predictions, e.g., predict
@@ -1123,6 +1126,10 @@ def write_predictions(all_examples, all_features, all_results, n_best_size,
       prelim_predictions.append(
           _PrelimPrediction(
               feature_index=min_null_feature_index,
+              unique_id=null_unique_id,
+              tok_to_orig_map=null_tok_to_orig_map,
+              feature=null_feature,
+              example=example,
               start_index=0,
               end_index=0,
               start_logit=null_start_logit,
@@ -1133,7 +1140,7 @@ def write_predictions(all_examples, all_features, all_results, n_best_size,
         reverse=True)
 
     _NbestPrediction = collections.namedtuple(  # pylint: disable=invalid-name
-        "NbestPrediction", ["text", "start_ind","end_ind","start_logit", "end_logit", "unique_id","tok_to_orig_map","feature","example"])
+        "NbestPrediction", ["text", "start_logit", "end_logit", "unique_id","tok_to_orig_map","feature","example"])
 
     seen_predictions = {}
     nbest = []
@@ -1173,8 +1180,6 @@ def write_predictions(all_examples, all_features, all_results, n_best_size,
               feature=pred.feature,
               example=example,
               text=final_text,
-              start_ind=pred.start_index,
-              end_ind=pred.end_index,
               start_logit=pred.start_logit,
               end_logit=pred.end_logit))
 
@@ -1183,14 +1188,18 @@ def write_predictions(all_examples, all_features, all_results, n_best_size,
       if "" not in seen_predictions:
         nbest.append(
             _NbestPrediction(
-                text="", start_ind=0, end_ind=0, start_logit=null_start_logit,
+                unique_id=null_unique_id,
+                tok_to_orig_map=null_tok_to_orig_map,
+                feature=null_feature,
+                example=example,
+                text="", start_logit=null_start_logit,
                 end_logit=null_end_logit))
     # In very rare edge cases we could have no valid predictions. So we
     # just create a nonce prediction in this case to avoid failure.
     if not nbest:
       print(example_index,example.qas_id)
       nbest.append(
-          _NbestPrediction(text="empty", start_ind=0, end_ind=0, start_logit=0.0, end_logit=0.0))
+          _NbestPrediction(text="empty", start_logit=0.0, end_logit=0.0))
 
     assert len(nbest) >= 1
 
@@ -1217,8 +1226,6 @@ def write_predictions(all_examples, all_features, all_results, n_best_size,
       output1["tok_to_orig_map"] = entry.tok_to_orig_map
       output1["feature"] = entry.feature
       output1["example"] = entry.example
-      output1["start_ind"]=entry.start_ind
-      output1["end_ind"]=entry.end_ind
       nbest_json.append(output)
       nbest_json1.append(output1)
 
@@ -1230,8 +1237,6 @@ def write_predictions(all_examples, all_features, all_results, n_best_size,
       all_tok_to_orig_map[example.qas_id]=nbest_json1[0]["tok_to_orig_map"]
       all_features_dict[example.qas_id]=nbest_json1[0]["feature"]
       all_examples_dict[example.qas_id]=nbest_json1[0]["example"]
-      all_start_inds[example.qas_id]=nbest_json1[0]["start_ind"]
-      all_end_inds[example.qas_id]=nbest_json1[0]["end_ind"]
       #print(example.qas_id)
     else:
       # predict "" iff the null score - the score of best non-null > threshold
@@ -1240,24 +1245,30 @@ def write_predictions(all_examples, all_features, all_results, n_best_size,
       scores_diff_json[example.qas_id] = score_diff
       if score_diff > FLAGS.null_score_diff_threshold:
         all_predictions[example.qas_id] = ""
+        all_predictions_unique_ids[example.qas_id] = best_non_null_entry.unique_id
+        all_tok_to_orig_map[example.qas_id]=best_non_null_entry.tok_to_orig_map
+        all_features_dict[example.qas_id]=best_non_null_entry.feature
+        all_examples_dict[example.qas_id]=best_non_null_entry.example
       else:
         all_predictions[example.qas_id] = best_non_null_entry.text
+        all_predictions_unique_ids[example.qas_id] = best_non_null_entry.unique_id
+        all_tok_to_orig_map[example.qas_id]=best_non_null_entry.tok_to_orig_map
+        all_features_dict[example.qas_id]=best_non_null_entry.feature
+        all_examples_dict[example.qas_id]=best_non_null_entry.example
+
+
 
     all_nbest_json[example.qas_id] = nbest_json
 
     #print(example.qas_id)
     ct_unique_id=all_predictions_unique_ids[example.qas_id]
+
     result = unique_id_to_result[ct_unique_id]
     imp_scores[example.qas_id]=result.importance_scores
     all_embs[example.qas_id]=result.emb
     all_seq_lens[example.qas_id]=result.seq_len
-    doc_words_temp=np.squeeze(result.input_ids)
-    #print(doc_words_temp.shape,len(doc_words_temp))
-    #print(doc_words_temp)
-    #print("unique_id : ",ct_unique_id)
-    doc_words[example.qas_id]=qn_and_doc_words[example.qas_id]
-    #for ii in range(len(doc_words_temp)) :
-    #  doc_words[example.qas_id].append(all_tok_to_orig_map[example.qas_id][doc_words_temp[ii]])
+
+    doc_words[example.qas_id]=qn_and_doc_words[ct_unique_id]
 
   with tf.gfile.GFile(output_prediction_file, "w") as writer:
     writer.write(json.dumps(all_predictions, indent=4) + "\n")
@@ -1269,20 +1280,19 @@ def write_predictions(all_examples, all_features, all_results, n_best_size,
     with tf.gfile.GFile(output_null_log_odds_file, "w") as writer:
       writer.write(json.dumps(scores_diff_json, indent=4) + "\n")
 
-  ## 25 March 2020
   importance_scores_dict={'words' : doc_words, 'imp_scores' : imp_scores, 'seq_len' : all_seq_lens}
   np.save(output_impscore_file,np.array(importance_scores_dict))
 
   # saving embs for tsne plot
   all_ids=list(all_embs.keys())
-  sep_inds=np.load('../dev/sep_inds_bert.npy',allow_pickle=True).item()
   save_embs_for_tsne=collections.OrderedDict()
-  for i in range(200) : 
+  i=0
+  while i!=10 : 
     ct_seq_len=all_seq_lens[all_ids[i]]
-    sep=sep_inds[all_ids[i]]
-    save_embs_for_tsne[all_ids[i]]={'emb':all_embs[all_ids[i]][:ct_seq_len],'sep':sep,'start_ind':all_start_inds[all_ids[i]],'end_ind':all_end_inds[all_ids[i]]}
+    save_embs_for_tsne[all_ids[i]]=all_embs[all_ids[i]][:ct_seq_len]
+    i=i+1
   np.save(output_emb_file,save_embs_for_tsne)
-  
+
   return all_examples_dict,all_features_dict,all_tok_to_orig_map,all_predictions_unique_ids,imp_scores,all_predictions
   
 
@@ -1493,6 +1503,7 @@ def main(_):
   validate_flags_or_throw(bert_config)
 
   tf.gfile.MakeDirs(FLAGS.output_dir)
+  print('DETAILS : ',FLAGS.start_example_index,FLAGS.end_example_index)
 
   tokenizer = tokenization.FullTokenizer(
       vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
@@ -1539,18 +1550,6 @@ def main(_):
       doing_integrated_gradients=True,
       after_integrated_gradients=False)
 
-  '''model_fn_2 = model_fn_builder(
-      bert_config=bert_config,
-      init_checkpoint=FLAGS.init_checkpoint,
-      learning_rate=FLAGS.learning_rate,
-      num_train_steps=num_train_steps,
-      num_warmup_steps=num_warmup_steps,
-      use_tpu=FLAGS.use_tpu,
-      use_one_hot_embeddings=FLAGS.use_tpu,
-      doing_integrated_gradients=False,
-      after_integrated_gradients=True)'''
-
-
   # If TPU is not available, this will fall back to normal Estimator on CPU
   # or GPU.
   # calculating integrated gradients
@@ -1560,13 +1559,6 @@ def main(_):
       config=run_config,
       train_batch_size=FLAGS.train_batch_size,
       predict_batch_size=FLAGS.predict_batch_size)
-  # calculating flip fractions
-  '''estimator_2 = tf.contrib.tpu.TPUEstimator(
-      use_tpu=FLAGS.use_tpu,
-      model_fn=model_fn_2,
-      config=run_config,
-      train_batch_size=FLAGS.train_batch_size,
-      predict_batch_size=FLAGS.predict_batch_size)'''
 
   if FLAGS.do_train:
     # We write to a temporary file to avoid storing very large constant tensors
@@ -1677,11 +1669,11 @@ def main(_):
               importance_scores=importance_scores))
 
 
-    output_prediction_file = os.path.join(FLAGS.output_dir, "predictions1.json")
-    output_nbest_file = os.path.join(FLAGS.output_dir, "nbest_predictions1.json")
-    output_null_log_odds_file = os.path.join(FLAGS.output_dir, "null_odds1.json")
-    output_impscore_file=os.path.join(FLAGS.output_dir+"/../ig_scores","importance_scores_ig_"+str(FLAGS.do_integrated_grad)+".npy")
-    output_emb_file=os.path.join(FLAGS.output_dir+"/../embs","emb_enclayer_"+str(FLAGS.do_integrated_grad)+".npy")
+    output_prediction_file = os.path.join(FLAGS.output_dir, "predictions.json")
+    output_nbest_file = os.path.join(FLAGS.output_dir, "nbest_predictions.json")
+    output_null_log_odds_file = os.path.join(FLAGS.output_dir, "null_odds.json")
+    output_impscore_file=os.path.join(FLAGS.output_dir+"/../ig_scores_duorc","importance_scores_ig_"+str(FLAGS.do_integrated_grad)+"_"+str(FLAGS.start_example_index)+'_'+str(FLAGS.end_example_index)+".npy") # 27
+    output_emb_file=os.path.join(FLAGS.output_dir+"/../embs_duorc","emb_enclayer_"+str(FLAGS.do_integrated_grad)+"_"+str(FLAGS.start_example_index)+'_'+str(FLAGS.end_example_index)+".npy") # 299
     
     all_examples_dict,all_features_dict,all_tok_to_orig_map,all_predictions_unique_ids,imp_scores_dict,predicted_answers=write_predictions(
                       eval_examples, eval_features, all_results,
