@@ -1,6 +1,6 @@
 # BERT-Analysis-RCQA
-**Official code for paper "Towards Interpreting BERT for Reading Comprehension Based QA"**
-*(Code upload in progress)*
+**Official code for paper [Towards Interpreting BERT for Reading Comprehension Based QA](https://www.aclweb.org/anthology/2020.emnlp-main.261)**
+*(README upload in progress)*
 
 *This code was developed on top of the [official BERT code released by Google](https://github.com/google-research/bert).*
 
