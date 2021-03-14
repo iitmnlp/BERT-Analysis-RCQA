@@ -68,3 +68,5 @@ python -u bert_dec_flips.py \
 Codes needed to generate Jensen-Shannon graphs and save them: ```jensen_shannon.py``` and ```graph_js.py```.
 
 Code to generate t-SNE plots: ```tsne.py``` (this code uses the embeddings saved by the IG scores code above).
+
+Code to analyze quantifier questions: ```quantifier_questions_analysis.py```.
