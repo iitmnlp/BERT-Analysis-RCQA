@@ -64,3 +64,5 @@ python -u bert_dec_flips.py \
   --do_integrated_grad=11 \
   --output_dir=/path/to/new/model/folder
 ```
+
+Codes needed to generate Jensen-Shannon graphs and save them: ```jensen_shannon.py``` and ```graph_js.py```.

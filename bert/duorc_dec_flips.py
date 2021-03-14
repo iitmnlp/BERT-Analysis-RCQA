@@ -169,8 +169,8 @@ flags.DEFINE_float(
 flags.DEFINE_bool("need_ans_position",
     True,"whether we need answer position for flip fraction evaluation")
 
-flags.DEFINE_integer("start_example_index", 3000, "xx")
-flags.DEFINE_integer("end_example_index", 9000, "xx")
+# flags.DEFINE_integer("start_example_index", 3000, "xx")
+# flags.DEFINE_integer("end_example_index", 9000, "xx")
 
 # needed to calculate decision flips
 assert FLAGS.predict_batch_size==1
@@ -338,8 +338,8 @@ def convert_examples_to_features(examples, tokenizer, max_seq_length,
   save_tokens_dict={}
 
   for (example_index, example) in enumerate(examples):
-    if example_index<FLAGS.start_example_index or example_index>=FLAGS.end_example_index : #if example_index<3000 or example_index>=9000 : 
-      continue
+    # if example_index<FLAGS.start_example_index or example_index>=FLAGS.end_example_index : #if example_index<3000 or example_index>=9000 : 
+    #   continue
     query_tokens = tokenizer.tokenize(example.question_text)
 
     if len(query_tokens) > max_query_length:
@@ -1055,9 +1055,9 @@ def write_predictions(all_examples, all_features, all_results, n_best_size,
   qn_and_doc_words=np.load(os.path.join(FLAGS.output_dir,'qn_and_doc_tokens.npy'),allow_pickle=True).item()
 
   for (example_index, example) in enumerate(all_examples):
-    if example_index<FLAGS.start_example_index or example_index>=FLAGS.end_example_index : #if example_index<3000 or example_index>=9000 : 
-      print('Skipping example_index : ',example_index)
-      continue
+    # if example_index<FLAGS.start_example_index or example_index>=FLAGS.end_example_index : #if example_index<3000 or example_index>=9000 : 
+    #   print('Skipping example_index : ',example_index)
+    #   continue
     features = example_index_to_features[example_index]
 
 
@@ -1503,7 +1503,7 @@ def main(_):
   validate_flags_or_throw(bert_config)
 
   tf.gfile.MakeDirs(FLAGS.output_dir)
-  print('DETAILS : ',FLAGS.start_example_index,FLAGS.end_example_index)
+  # print('DETAILS : ',FLAGS.start_example_index,FLAGS.end_example_index)
 
   tokenizer = tokenization.FullTokenizer(
       vocab_file=FLAGS.vocab_file, do_lower_case=FLAGS.do_lower_case)
@@ -1672,8 +1672,8 @@ def main(_):
     output_prediction_file = os.path.join(FLAGS.output_dir, "predictions.json")
     output_nbest_file = os.path.join(FLAGS.output_dir, "nbest_predictions.json")
     output_null_log_odds_file = os.path.join(FLAGS.output_dir, "null_odds.json")
-    output_impscore_file=os.path.join(FLAGS.output_dir+"/../ig_scores_duorc","importance_scores_ig_"+str(FLAGS.do_integrated_grad)+"_"+str(FLAGS.start_example_index)+'_'+str(FLAGS.end_example_index)+".npy") # 27
-    output_emb_file=os.path.join(FLAGS.output_dir+"/../embs_duorc","emb_enclayer_"+str(FLAGS.do_integrated_grad)+"_"+str(FLAGS.start_example_index)+'_'+str(FLAGS.end_example_index)+".npy") # 299
+    output_impscore_file=os.path.join(FLAGS.output_dir+"/../ig_scores_duorc","importance_scores_ig_"+str(FLAGS.do_integrated_grad)+".npy") # 27
+    output_emb_file=os.path.join(FLAGS.output_dir+"/../embs_duorc","emb_enclayer_"+str(FLAGS.do_integrated_grad)+".npy") # 299
     
     all_examples_dict,all_features_dict,all_tok_to_orig_map,all_predictions_unique_ids,imp_scores_dict,predicted_answers=write_predictions(
                       eval_examples, eval_features, all_results,
