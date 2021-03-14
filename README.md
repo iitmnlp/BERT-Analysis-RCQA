@@ -30,6 +30,11 @@ python -u run_squad_infer.py
   --output_dir=/path/to/new/model/folder
 ```
 
+To evaluate the BERT model's predictions (```evaluate-v2.0.py``` for SQuAD and ```duorc_evaluate-v2.0.py``` for DuoRC):
+```
+python -u evaluate-v2.0.py /path/to/dataset/json /path/to/predictions/json --checkpoint_dir=/path/to/checkpoints/folder
+```
+
 To generate integrated gradient scores for each layer:
 * set layer number from 0 to 11 in ```do_integrated_grad```
 * ```predict_batch_size``` must always be set to 1 in this code
