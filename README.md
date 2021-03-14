@@ -70,6 +70,7 @@ python -u bert_dec_flips.py \
 
 ## Codes to generate Jensen-Shannon graphs and save them: 
 Use ```jensen_shannon.py``` and ```graph_js.py```.
+
 <img src="https://user-images.githubusercontent.com/17588365/111081891-75b7cd80-852b-11eb-800b-8deeba82bbfc.png" width="300"> <img src="https://user-images.githubusercontent.com/17588365/111082082-638a5f00-852c-11eb-911d-c8ebc8bfa003.png" width="300">
 
 <img src="https://user-images.githubusercontent.com/17588365/111082094-7ac94c80-852c-11eb-9844-77cd1c483f14.png" width="300"> <img src="https://user-images.githubusercontent.com/17588365/111082103-84eb4b00-852c-11eb-8340-f05c2bd57437.png" width="300">
@@ -77,6 +78,7 @@ Use ```jensen_shannon.py``` and ```graph_js.py```.
 
 ## Code to generate t-SNE plots: 
 Use ```tsne.py``` (this code uses the embeddings saved by the IG scores code above).
+
 <img src="https://user-images.githubusercontent.com/17588365/111082184-f5926780-852c-11eb-9768-459b8fea9bed.png" width="300"> <img src="https://user-images.githubusercontent.com/17588365/111082186-f9be8500-852c-11eb-80e2-c5fb4c45e38f.png" width="300">
 
 <img src="https://user-images.githubusercontent.com/17588365/111082193-fc20df00-852c-11eb-8331-ccf616638613.png" width="300"> <img src="https://user-images.githubusercontent.com/17588365/111082196-ff1bcf80-852c-11eb-97b4-c463122f0387.png" width="300">
