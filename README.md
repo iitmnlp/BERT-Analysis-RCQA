@@ -39,7 +39,7 @@ To generate integrated gradient scores for each layer:
 * set layer number from 0 to 11 in ```do_integrated_grad```
 * ```predict_batch_size``` must always be set to 1 in this code
 * The IG scores are stored in a folder called ```ig_scores``` (for SQuAD) and ```ig_scores_duorc``` (for DuoRC), in files named in the format ```importance_scores_ig_layer_number.npy``` 
-* Embeddings for the first 200 datapoints are stored in a folder called ```embs_scores``` (for SQuAD) and ```embs_duorc``` (for DuoRC), in files named in the format ```emb_enclayer_layer_number.npy``` 
+* Embeddings for the first 200 datapoints are stored in a folder called ```embs``` (for SQuAD) and ```embs_duorc``` (for DuoRC), in files named in the format ```emb_enclayer_layer_number.npy``` 
 * The tokenized 'QN [SEP] PASSAGE' will be stored in ```output_dir/qn_and_doc_tokens.npy```
 * Use ```bert_dec_flips.py``` for SQuAD and ```duorc_dec_flips.py``` for DuoRC (since the datasets need to be processed differently).
 
@@ -66,3 +66,5 @@ python -u bert_dec_flips.py \
 ```
 
 Codes needed to generate Jensen-Shannon graphs and save them: ```jensen_shannon.py``` and ```graph_js.py```.
+
+Code to generate t-SNE plots: ```tsne.py``` (this code uses the embeddings saved by the IG scores code above).
