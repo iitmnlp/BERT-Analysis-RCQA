@@ -86,3 +86,6 @@ Use ```tsne.py``` (this code uses the embeddings saved by the IG scores code abo
 
 ## Code to analyze quantifier questions:
 Use ```quantifier_questions_analysis.py```.
+
+## Contact
+For any questions, please contact sahanjich@gmail.com.
